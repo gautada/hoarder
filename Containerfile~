@@ -1,0 +1,71 @@
+ARG ALPINE_VERSION=latest
+
+# │ STAGE: CONTAINER
+# ╰――――――――――――――――――――――――――――――――――――――――――――――――――――――
+FROM docker.io/gautada/alpine:$ALPINE_VERSION as CONTAINER
+
+# ╭――――――――――――――――――――╮
+# │ METADATA           │
+# ╰――――――――――――――――――――╯
+LABEL source="https://github.com/gautada/hoarder.git"
+LABEL maintainer="Adam Gautier <adam@gautier.org>"
+LABEL description="A container for a hoarder server"
+
+# ╭―
+# │ USER
+# ╰――――――――――――――――――――
+ARG USER=hoarder
+RUN /usr/sbin/usermod -l $USER alpine
+RUN /usr/sbin/usermod -d /home/$USER -m $USER
+RUN /usr/sbin/groupmod -n $USER alpine
+# Set shell to /bin/ash and enable pipefail for Alpine-based images
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+RUN /bin/echo "$USER:$USER" | /usr/sbin/chpasswd
+
+# ╭―
+# │ PRIVILEGES
+# ╰――――――――――――――――――――
+# COPY privileges /etc/container/privileges
+
+# ╭―
+# │ BACKUP
+# ╰――――――――――――――――――――
+# COPY backup /etc/container/backup
+
+
+# ╭―
+# │ ENTRYPOINT
+# ╰――――――――――――――――――――
+# COPY entrypoint /etc/container/entrypoint
+
+# ╭―
+# │ APPLICATION
+# ╰――――――――――――――――――――
+
+RUN /sbin/apk add --no-cache pnpm
+
+ARG HOARDER_VERSION="0.22.0"
+
+WORKDIR /opt
+RUN git config --global advice.detachedHead false \
+ && git clone --branch "v$HOARDER_VERSION" https://github.com/hoarder-app/hoarder.git
+
+# ╭―
+# │ CONFIGURATION
+# ╰――――――――――――――――――――
+RUN chown -R $USER:$USER /home/$USER /opt/hoarder
+
+USER $USER
+VOLUME /mnt/volumes/backup
+VOLUME /mnt/volumes/configmaps
+VOLUME /mnt/volumes/container
+VOLUME /mnt/volumes/secrets
+VOLUME /mnt/volumes/source
+
+
+WORKDIR /home/$USER
+
+
+
+ 
+
